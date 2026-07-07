@@ -44,7 +44,7 @@ class HostDevice(SQLModel, table=True):
     __tablename__ = "host_devices"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    machine_id: str = Field(unique=True, index=True)
+    host_id: str = Field(unique=True, index=True)
     org_id: UUID = Field(foreign_key="organizations.id", ondelete="CASCADE")
     name: str
     is_online: bool = Field(default=False)
