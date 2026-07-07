@@ -52,9 +52,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from routes import auth
+from routes import auth, organization, host, agent
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(
+    organization.router, prefix="/api/organizations", tags=["Organizations"]
+)
+app.include_router(host.router, prefix="/api/organizations", tags=["Host Devices"])
+app.include_router(agent.router, tags=["Agent"])
 
 
 @app.get("/health")

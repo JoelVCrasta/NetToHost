@@ -55,7 +55,7 @@ async def agent_tunnel(
         return
 
     host_query = select(HostDevice).where(
-        HostDevice.id == host_id, HostDevice.org_id == auth_token.org_id
+        HostDevice.host_id == host_id, HostDevice.org_id == auth_token.org_id
     )
     result = await session.execute(host_query)
     host = result.scalar_one_or_none()
