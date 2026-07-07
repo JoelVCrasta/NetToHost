@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from main import get_session
-from auth.supabase_client import get_current_user
+from clients.supabase_client import get_current_user
 from utils.permission import verify_permission
 from models.model import HostDevice, MemberRole
 from schemas.host import UpdateHostNameRequest

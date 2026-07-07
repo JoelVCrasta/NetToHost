@@ -8,7 +8,7 @@ from sqlmodel import select
 from datetime import datetime, timezone
 
 from main import get_session
-from auth.supabase_client import get_current_user
+from clients.supabase_client import get_current_user
 from utils.permission import verify_permission
 from models.model import Organization, OrgMember, MemberRole
 from schemas.organization import (

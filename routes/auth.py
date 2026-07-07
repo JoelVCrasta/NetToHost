@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel, EmailStr
-from auth.supabase_client import supabase, get_current_user
+from clients.supabase_client import supabase, get_current_user
 
 router = APIRouter()
 

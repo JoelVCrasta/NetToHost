@@ -8,7 +8,7 @@ from sqlmodel import select
 from haikunator import Haikunator
 
 from main import get_session
-from auth.supabase_client import get_current_user
+from clients.supabase_client import get_current_user
 from utils.permission import verify_permission
 from models.model import AuthToken, MemberRole
 from schemas.token import (
