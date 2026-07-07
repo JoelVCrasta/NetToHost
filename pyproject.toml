@@ -13,6 +13,7 @@ dependencies = [
     "langchain-mcp-adapters>=0.3.0",
     "langgraph>=1.2.7",
     "langgraph-cli>=0.4.30",
+    "pydantic[email]>=2.13.4",
     "python-dotenv>=1.2.2",
     "redis>=8.0.1",
     "sqlmodel>=0.0.39",
