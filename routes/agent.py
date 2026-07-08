@@ -7,10 +7,8 @@ from fastapi import (
     WebSocket,
     WebSocketDisconnect,
     Depends,
-    HTTPException,
     status,
 )
-from supabase_auth import User
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 from datetime import datetime, timezone
@@ -94,6 +92,12 @@ async def agent_tunnel(
 
     except WebSocketDisconnect:
         logger.info(f"Host {host_id} disconnected")
+
+    except Exception as e:
+        logger.error(f"Error in WebSocket connection for host {host_id}: {e}")
+        await websocket.close(
+            code=status.WS_1011_INTERNAL_ERROR, reason="Internal server error"
+        )
     finally:
         listener_task.cancel()
         await pubsub.unsubscribe(f"host:{host_id}")
