@@ -17,6 +17,7 @@ from haikunator import Haikunator
 from main import get_session
 from clients.redis_client import redis
 from models.model import AuthToken, HostDevice
+from services.connection_manager import conn_manager
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +75,8 @@ async def agent_tunnel(
     await session.commit()
     await session.refresh(host)
 
+    conn_manager.connect(host_id, websocket)
+
     pubsub = redis.pubsub()
     await pubsub.subscribe(f"host:{host_id}")
 
@@ -90,15 +93,27 @@ async def agent_tunnel(
             data = await websocket.receive_text()
             logger.info(f"Received data from host {host_id}: {data}")
 
+            try:
+                payload = json.loads(data)
+                if "message_id" in payload:
+                    conn_manager.route_response(payload["message_id"], payload)
+            except json.JSONDecodeError:
+                logger.error(f"Invalid JSON received from host {host_id}: {data}")
+
     except WebSocketDisconnect:
         logger.info(f"Host {host_id} disconnected")
 
     except Exception as e:
         logger.error(f"Error in WebSocket connection for host {host_id}: {e}")
-        await websocket.close(
-            code=status.WS_1011_INTERNAL_ERROR, reason="Internal server error"
-        )
+        try:
+            await websocket.close(
+                code=status.WS_1011_INTERNAL_ERROR, reason="Internal server error"
+            )
+        except RuntimeError:
+            pass
     finally:
+        conn_manager.disconnect(host_id)
+        
         listener_task.cancel()
         await pubsub.unsubscribe(f"host:{host_id}")
         await pubsub.close()
