@@ -15,3 +15,6 @@ wheels/
 
 # Environment variables
 .env
+
+# langgraph
+.langgraph_api
