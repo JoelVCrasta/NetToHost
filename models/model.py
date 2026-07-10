@@ -16,7 +16,7 @@ class MemberRole(str, Enum):
 class MessageRole(str, Enum):
     ASSISTANT = "assistant"
     USER = "user"
-    TOOL = "tool"
+    SYSTEM = "system"
 
 
 class Organization(SQLModel, table=True):
