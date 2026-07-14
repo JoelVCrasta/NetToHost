@@ -24,6 +24,7 @@ from langchain_core.tools import tool
 from langchain_groq import ChatGroq
 
 from services.connection_manager import conn_manager
+from schemas.protocol import ActionType, ExecuteToolRequest, ExecuteToolResponse
 
 logger = logging.getLogger(__name__)
 
@@ -77,18 +78,25 @@ async def execute_remote_mcp_tool(name: str, args: dict, target_host_id: str) ->
         target_host_id (str): The ID of the target host.
     """
     message_id = str(uuid4())
-    payload = {
-        "message_id": message_id,
-        "action": "execute_tool",
-        "tool_name": name,
-        "args": args,
-    }
+    payload = ExecuteToolRequest(
+        action=ActionType.EXECUTE_TOOL,
+        message_id=message_id,
+        name=name,
+        args=args,
+    )
 
     logger.info(f"Sending tool execution request to host {target_host_id}")
 
     try:
-        result = await conn_manager.send_and_wait(target_host_id, message_id, payload)
-        return str(result.get("result", result.get("error", "No result returned")))
+        response = await conn_manager.send_and_wait(target_host_id, message_id, payload)
+        validated_response = ExecuteToolResponse.model_validate(response)
+        if validated_response.error:
+            logger.error(
+                f"Error from host {target_host_id}: {validated_response.error}"
+            )
+            return f"Error executing tool on host {target_host_id}: {validated_response.error}"
+
+        return str(validated_response.result)
     except Exception as e:
         logger.error(f"Error executing tool on host {target_host_id}: {e}")
         return f"Error executing tool on host: {str(e)}"
@@ -134,7 +142,7 @@ class Supervisor:
 
         tools_info = []
         for host_id in target_hosts:
-            tools = state.get("active_host_tools", {}).get(host_id, [])
+            tools = conn_manager.available_tools.get(host_id, [])
             tool_list = (
                 "\n".join([f"- {t['name']}: {t['description']}" for t in tools])
                 if tools
