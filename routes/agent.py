@@ -15,7 +15,6 @@ from datetime import datetime, timezone
 from haikunator import Haikunator
 
 from main import get_session
-from clients.redis_client import redis
 from models.model import AuthToken, HostDevice
 from services.connection_manager import conn_manager
 
@@ -76,27 +75,20 @@ async def agent_tunnel(
     await session.refresh(host)
 
     conn_manager.connect(host_id, websocket)
-
-    pubsub = redis.pubsub()
-    await pubsub.subscribe(f"host:{host_id}")
+    asyncio.create_task(conn_manager.sync_host_tools(host_id))
 
     try:
-
-        async def redis_listener():
-            async for message in pubsub.listen():
-                if message["type"] == "message":
-                    await websocket.send_text(message["data"])
-
-        listener_task = asyncio.create_task(redis_listener())
-
         while True:
             data = await websocket.receive_text()
             logger.info(f"Received data from host {host_id}: {data}")
 
             try:
                 payload = json.loads(data)
-                if "message_id" in payload:
-                    conn_manager.route_response(payload["message_id"], payload)
+                message_id = payload.get("message_id")
+                if not message_id:
+                    logger.error(f"Missing message_id in payload: {payload}")
+                    continue
+                conn_manager.route_response(message_id, payload)
             except json.JSONDecodeError:
                 logger.error(f"Invalid JSON received from host {host_id}: {data}")
 
@@ -113,10 +105,6 @@ async def agent_tunnel(
             pass
     finally:
         conn_manager.disconnect(host_id)
-        
-        listener_task.cancel()
-        await pubsub.unsubscribe(f"host:{host_id}")
-        await pubsub.close()
 
         try:
             host.is_online = False
