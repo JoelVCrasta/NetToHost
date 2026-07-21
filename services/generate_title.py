@@ -3,7 +3,7 @@ import logging
 from uuid import UUID
 from fastapi import HTTPException, status
 from sqlmodel import select
-from groq import Groq
+from groq import AsyncGroq
 from groq.types.chat import ChatCompletion
 
 from main import AsyncSessionLocal
@@ -11,7 +11,7 @@ from models.model import ChatSession
 
 logger = logging.getLogger(__name__)
 
-llm = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+llm = AsyncGroq(api_key=os.environ.get("GROQ_API_KEY"))
 
 
 async def generate_title(session_id: UUID, message: str):
