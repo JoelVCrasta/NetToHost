@@ -44,7 +44,7 @@ class AgentState(TypedDict):
     session_id: UUID
     connected_hosts: dict[str, str]
     target_host_ids: list[str]
-    active_host_tools: dict[str, list[dict]]
+    # active_host_tools: dict[str, list[dict[str, Any]]]
     active_node: str
     pending_approval: bool
     approved: Optional[bool]
@@ -142,9 +142,7 @@ class Supervisor:
         )
         result = await self.llm.ainvoke([system_prompt] + list(state["messages"]))
         tokens = (
-            result.usage_metadata.get("total_tokens", 0)
-            if result.usage_metadata
-            else 0
+            result.usage_metadata.get("total_tokens", 0) if result.usage_metadata else 0
         )
 
         return {"messages": [result], "tokens_used": tokens}
@@ -183,9 +181,7 @@ class Supervisor:
         )
         result = await self.tool_llm.ainvoke([system_prompt] + list(state["messages"]))
         tokens = (
-            result.usage_metadata.get("total_tokens", 0)
-            if result.usage_metadata
-            else 0
+            result.usage_metadata.get("total_tokens", 0) if result.usage_metadata else 0
         )
 
         return {"messages": [result], "tokens_used": tokens}
@@ -213,7 +209,7 @@ class Supervisor:
             )
         )
         result = await structured_llm.ainvoke([system_prompt, user_prompt])
-        
+
         assessment = result.get("parsed")
         raw_result = result.get("raw")
         tokens = (
@@ -318,3 +314,6 @@ class Supervisor:
         self.graph = workflow.compile(
             checkpointer=memory, interrupt_before=["approval_node"]
         )
+
+
+supervisor = Supervisor()
