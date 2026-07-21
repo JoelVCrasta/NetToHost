@@ -13,7 +13,7 @@ async def verify_permission(
     required_role: list[MemberRole],
 ):
     member_query = select(OrgMember).where(
-        OrgMember.organization_id == organization_id,
+        OrgMember.org_id == organization_id,
         OrgMember.user_id == user_id,
         OrgMember.role.in_(required_role),
     )
