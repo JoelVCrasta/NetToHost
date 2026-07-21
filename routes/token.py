@@ -31,27 +31,19 @@ async def get_auth_tokens(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
-    try:
-        await verify_permission(
-            organization_id,
-            user.id,
-            session,
-            "view auth tokens",
-            [MemberRole.OWNER, MemberRole.ADMIN],
-        )
+    await verify_permission(
+        organization_id,
+        user.id,
+        session,
+        "view auth tokens",
+        [MemberRole.OWNER, MemberRole.ADMIN],
+    )
 
-        query = select(AuthToken).where(AuthToken.org_id == organization_id)
-        result = await session.execute(query)
-        tokens = result.scalars().all()
+    query = select(AuthToken).where(AuthToken.org_id == organization_id)
+    result = await session.execute(query)
+    tokens = result.scalars().all()
 
-        return [TokenResponse.model_validate(token) for token in tokens]
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error fetching auth tokens: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+    return [TokenResponse.model_validate(token) for token in tokens]
 
 
 @router.post("/{organization_id}/tokens")
@@ -61,42 +53,34 @@ async def create_auth_token(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
-    try:
-        await verify_permission(
-            organization_id,
-            user.id,
-            session,
-            "create auth token",
-            [MemberRole.OWNER, MemberRole.ADMIN],
-        )
+    await verify_permission(
+        organization_id,
+        user.id,
+        session,
+        "create auth token",
+        [MemberRole.OWNER, MemberRole.ADMIN],
+    )
 
-        token_name = payload.name if payload.name else haiku.haikunate()
-        raw_token = f"n2h_{secrets.token_urlsafe(32)}"
+    token_name = payload.name if payload.name else haiku.haikunate()
+    raw_token = f"n2h_{secrets.token_urlsafe(32)}"
 
-        new_auth_token = AuthToken(
-            org_id=organization_id,
-            name=token_name,
-            token=raw_token,
-            created_by=user.id,
-            is_active=True,
-            expires_at=payload.expires_at,
-        )
+    new_auth_token = AuthToken(
+        org_id=organization_id,
+        name=token_name,
+        token=raw_token,
+        created_by=user.id,
+        is_active=True,
+        expires_at=payload.expires_at,
+    )
 
-        session.add(new_auth_token)
-        await session.commit()
+    session.add(new_auth_token)
+    await session.commit()
 
-        return {
-            "name": token_name,
-            "token": raw_token,
-            "message": "Token created successfully",
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error creating auth token: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+    return {
+        "name": token_name,
+        "token": raw_token,
+        "message": "Token created successfully",
+    }
 
 
 @router.patch("/{organization_id}/tokens/{token_id}/name")
@@ -107,44 +91,36 @@ async def update_auth_token(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
-    try:
-        await verify_permission(
-            organization_id,
-            user.id,
-            session,
-            "update auth token",
-            [MemberRole.OWNER, MemberRole.ADMIN],
-        )
+    await verify_permission(
+        organization_id,
+        user.id,
+        session,
+        "update auth token",
+        [MemberRole.OWNER, MemberRole.ADMIN],
+    )
 
-        query = select(AuthToken).where(
-            AuthToken.org_id == organization_id, AuthToken.id == token_id
-        )
-        result = await session.execute(query)
-        auth_token = result.scalar_one_or_none()
+    query = select(AuthToken).where(
+        AuthToken.org_id == organization_id, AuthToken.id == token_id
+    )
+    result = await session.execute(query)
+    auth_token = result.scalar_one_or_none()
 
-        if not auth_token:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Auth token not found."
-            )
-
-        auth_token.name = payload.name if payload.name else auth_token.name
-
-        session.add(auth_token)
-        await session.commit()
-        await session.refresh(auth_token)
-
-        return {
-            "id": str(auth_token.id),
-            "name": auth_token.name,
-            "message": "Auth token updated successfully.",
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error updating auth token: {e}")
+    if not auth_token:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_404_NOT_FOUND, detail="Auth token not found."
         )
+
+    auth_token.name = payload.name if payload.name else auth_token.name
+
+    session.add(auth_token)
+    await session.commit()
+    await session.refresh(auth_token)
+
+    return {
+        "id": str(auth_token.id),
+        "name": auth_token.name,
+        "message": "Auth token updated successfully.",
+    }
 
 
 @router.patch("/{organization_id}/tokens/{token_id}/status")
@@ -155,44 +131,36 @@ async def update_auth_token_status(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
-    try:
-        await verify_permission(
-            organization_id,
-            user.id,
-            session,
-            "update auth token status",
-            [MemberRole.OWNER, MemberRole.ADMIN],
-        )
+    await verify_permission(
+        organization_id,
+        user.id,
+        session,
+        "update auth token status",
+        [MemberRole.OWNER, MemberRole.ADMIN],
+    )
 
-        query = select(AuthToken).where(
-            AuthToken.org_id == organization_id, AuthToken.id == token_id
-        )
-        result = await session.execute(query)
-        auth_token = result.scalar_one_or_none()
+    query = select(AuthToken).where(
+        AuthToken.org_id == organization_id, AuthToken.id == token_id
+    )
+    result = await session.execute(query)
+    auth_token = result.scalar_one_or_none()
 
-        if not auth_token:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Auth token not found."
-            )
-
-        auth_token.is_active = payload.is_active
-
-        session.add(auth_token)
-        await session.commit()
-        await session.refresh(auth_token)
-
-        return {
-            "id": str(auth_token.id),
-            "is_active": auth_token.is_active,
-            "message": f"Auth token { 'activated' if payload.is_active else 'deactivated' } successfully.",
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error updating auth token status: {e}")
+    if not auth_token:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_404_NOT_FOUND, detail="Auth token not found."
         )
+
+    auth_token.is_active = payload.is_active
+
+    session.add(auth_token)
+    await session.commit()
+    await session.refresh(auth_token)
+
+    return {
+        "id": str(auth_token.id),
+        "is_active": auth_token.is_active,
+        "message": f"Auth token {'activated' if payload.is_active else 'deactivated'} successfully.",
+    }
 
 
 @router.delete("/{organization_id}/tokens/{token_id}")
@@ -202,34 +170,26 @@ async def delete_auth_token(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
-    try:
-        await verify_permission(
-            organization_id,
-            user.id,
-            session,
-            "delete auth token",
-            [MemberRole.OWNER, MemberRole.ADMIN],
-        )
+    await verify_permission(
+        organization_id,
+        user.id,
+        session,
+        "delete auth token",
+        [MemberRole.OWNER, MemberRole.ADMIN],
+    )
 
-        query = select(AuthToken).where(
-            AuthToken.org_id == organization_id, AuthToken.id == token_id
-        )
-        result = await session.execute(query)
-        auth_token = result.scalar_one_or_none()
+    query = select(AuthToken).where(
+        AuthToken.org_id == organization_id, AuthToken.id == token_id
+    )
+    result = await session.execute(query)
+    auth_token = result.scalar_one_or_none()
 
-        if not auth_token:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Auth token not found."
-            )
-
-        await session.delete(auth_token)
-        await session.commit()
-
-        return {"message": "Auth token deleted successfully."}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error deleting auth token: {e}")
+    if not auth_token:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_404_NOT_FOUND, detail="Auth token not found."
         )
+
+    await session.delete(auth_token)
+    await session.commit()
+
+    return {"message": "Auth token deleted successfully."}

@@ -40,6 +40,8 @@ def signup_email(payload: SignUpRequest):
             )
 
         return {"status": "success", "message": "Signed up successfully."}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -68,13 +70,12 @@ def signin_email(payload: SignInRequest):
             "user_id": response.user.id,
             "display_name": display_name,
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.post("/signout")
 def logout(user=Depends(get_current_user)):
-    try:
-        return {"status": "success", "message": "Signed out successfully."}
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    return {"status": "success", "message": "Signed out successfully."}
