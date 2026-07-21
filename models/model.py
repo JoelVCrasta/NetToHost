@@ -102,7 +102,7 @@ class ChatSession(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     org_id: UUID = Field(foreign_key="organizations.id", ondelete="CASCADE")
     created_by: UUID
-    title: str
+    title: str = Field(default="New Chat")
     is_private: bool = Field(default=False)
 
     created_at: datetime = Field(
