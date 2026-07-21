@@ -1,6 +1,5 @@
-import os
-import asyncio
 import json
+import operator
 import logging
 from typing import Annotated, Sequence, TypedDict, Optional, Literal
 from dotenv import load_dotenv
@@ -50,6 +49,7 @@ class AgentState(TypedDict):
     pending_approval: bool
     approved: Optional[bool]
     reason: Optional[str]
+    tokens_used: Annotated[int, operator.add]
 
 
 class RouteDecision(BaseModel):
@@ -112,17 +112,27 @@ class Supervisor:
     async def router_node(self, state: AgentState):
         logger.info("Router is evaluating the request...")
 
-        structured_llm = self.llm.with_structured_output(RouteDecision)
+        structured_llm = self.llm.with_structured_output(
+            RouteDecision, include_raw=True
+        )
         system_prompt = SystemMessage(
             content="You are a routing assistant that decides which agent should handle the user's request."
         )
         user_prompt = HumanMessage(content=state["messages"][-1].content)
-        result: RouteDecision = await structured_llm.ainvoke(
-            [system_prompt, user_prompt]
+        result = await structured_llm.ainvoke(
+            [system_prompt, user_prompt],
         )
 
-        logger.info(f"Router decision: {result.target}")
-        return {"active_node": result.target}
+        decision: RouteDecision = result.get("parsed")
+        raw_result = result.get("raw")
+        tokens = (
+            raw_result.usage_metadata.get("total_tokens", 0)
+            if raw_result and raw_result.usage_metadata
+            else 0
+        )
+
+        logger.info(f"Router decision: {decision.target}")
+        return {"active_node": decision.target, "tokens_used": tokens}
 
     async def general_node(self, state: AgentState):
         logger.info("General agent is handling the request...")
@@ -131,8 +141,13 @@ class Supervisor:
             content="You are a helpful AI assistant. Answer the user's question directly. Do not attempt to use tools."
         )
         result = await self.llm.ainvoke([system_prompt] + list(state["messages"]))
+        tokens = (
+            result.usage_metadata.get("total_tokens", 0)
+            if result.usage_metadata
+            else 0
+        )
 
-        return {"messages": [result]}
+        return {"messages": [result], "tokens_used": tokens}
 
     async def host_node(self, state: AgentState):
         logger.info("Host agent is handling the request...")
@@ -167,17 +182,24 @@ class Supervisor:
             "3. If the target host name is specified, then use the corresponding host_id while calling execute_remote_mcp_tool."
         )
         result = await self.tool_llm.ainvoke([system_prompt] + list(state["messages"]))
+        tokens = (
+            result.usage_metadata.get("total_tokens", 0)
+            if result.usage_metadata
+            else 0
+        )
 
-        return {"messages": [result]}
+        return {"messages": [result], "tokens_used": tokens}
 
     async def guardrail_node(self, state: AgentState):
         logger.info("Guadrail is assessing the safety of the request...")
 
         last_message = state["messages"][-1]
         if not (isinstance(last_message, AIMessage) and last_message.tool_calls):
-            return {"pending_approval": False}
+            return {"pending_approval": False, "tokens_used": 0}
 
-        structured_llm = self.llm.with_structured_output(SafetyAssessment)
+        structured_llm = self.llm.with_structured_output(
+            SafetyAssessment, include_raw=True
+        )
         system_prompt = SystemMessage(
             content="You are a safety assessment assistant. Determine if the proposed tool execution is safe or dangerous."
             "Give a short reason why its dangerous."
@@ -190,8 +212,14 @@ class Supervisor:
                 for tool_call in last_message.tool_calls
             )
         )
-        assessment: SafetyAssessment = await structured_llm.ainvoke(
-            [system_prompt, user_prompt]
+        result = await structured_llm.ainvoke([system_prompt, user_prompt])
+        
+        assessment = result.get("parsed")
+        raw_result = result.get("raw")
+        tokens = (
+            raw_result.usage_metadata.get("total_tokens", 0)
+            if raw_result and raw_result.usage_metadata
+            else 0
         )
 
         logger.info(
@@ -200,6 +228,7 @@ class Supervisor:
         return {
             "pending_approval": assessment.is_dangerous,
             "reason": assessment.reason,
+            "tokens_used": tokens,
         }
 
     async def approval_node(self, state: AgentState):
