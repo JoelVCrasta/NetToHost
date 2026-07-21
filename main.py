@@ -6,6 +6,8 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 
+from services.agent import supervisor
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -37,7 +39,7 @@ async def get_session():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # await agent.initialize()
+    supervisor.initialize()
     yield
     await engine.dispose()
 
@@ -52,13 +54,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from routes import auth, organization, host, agent
+from routes import auth, organization, host, agent, chat
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(
     organization.router, prefix="/api/organizations", tags=["Organizations"]
 )
 app.include_router(host.router, prefix="/api/organizations", tags=["Host Devices"])
+app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
 app.include_router(agent.router, tags=["Agent"])
 
 
