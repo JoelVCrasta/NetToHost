@@ -204,7 +204,7 @@ async def update_org_member_role(
         )
 
         query = select(OrgMember).where(
-            OrgMember.organization_id == organization_id,
+            OrgMember.org_id == organization_id,
             OrgMember.user_id == payload.user_id,
         )
         result = await session.execute(query)
@@ -249,7 +249,7 @@ async def remove_org_members(
         )
 
         query = select(OrgMember).where(
-            OrgMember.organization_id == organization_id,
+            OrgMember.org_id == organization_id,
             OrgMember.user_id.in_(payload.user_ids),
         )
         result = await session.execute(query)
