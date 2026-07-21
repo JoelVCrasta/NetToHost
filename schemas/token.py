@@ -1,11 +1,12 @@
 from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
+from typing import Optional
 
 
 class CreateTokenRequest(BaseModel):
     name: str
-    expires_at: datetime | None
+    expires_at: Optional[datetime] = None
 
 
 class UpdateTokenNameRequest(BaseModel):
@@ -24,4 +25,4 @@ class TokenResponse(BaseModel):
     is_active: bool
     created_by: UUID
     created_at: datetime
-    expires_at: datetime | None
+    expires_at: Optional[datetime] = None
