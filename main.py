@@ -1,8 +1,10 @@
 import os
 import logging
-from fastapi import FastAPI
+from fastapi import FastAPI, status
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from sqlalchemy.exc import IntegrityError
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 
@@ -12,6 +14,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
 )
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -53,6 +56,30 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(IntegrityError)
+async def integrity_error_handler(request, exc: IntegrityError):
+    logger.error(
+        f"Database integrity error on {request.method} {request.url.path}: {exc}"
+    )
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"detail": "Invalid data provided or constraint violation."},
+    )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc: Exception):
+    logger.error(
+        f"Unhandled exception on {request.method} {request.url.path}: {exc}",
+        exc_info=True,
+    )
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": str(exc)},
+    )
+
 
 from routes import auth, organization, host, agent, chat
 
