@@ -6,3 +6,6 @@ class CreateChatRequest(BaseModel):
     message: str
     is_private: bool = False
     
+class AddMessageRequest(BaseModel):
+    message: str
+    
