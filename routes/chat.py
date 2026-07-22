@@ -10,7 +10,7 @@ from main import get_session
 from clients.supabase_client import get_current_user
 from utils.permission import verify_permission
 from models.model import ChatSession, ChatMessage, MemberRole, MessageRole
-from schemas.chat import CreateChatRequest, AddMessageRequest
+from schemas.chat import CreateChatRequest, AddMessageRequest, UpdateChatTitleRequest
 from services.generate_title import generate_title
 from services.agent import supervisor, AgentState
 
@@ -262,6 +262,37 @@ async def get_chat_session(
     chat_session.messages = messages
 
     return chat_session
+
+
+@router.patch("/{session_id}/title")
+async def update_chat_title(
+    session_id: UUID,
+    payload: UpdateChatTitleRequest,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    chat_session_query = select(ChatSession).where(ChatSession.id == session_id)
+    result = await session.execute(chat_session_query)
+    chat_session = result.scalar_one_or_none()
+
+    if not chat_session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Chat session not found."
+        )
+
+    await verify_permission(
+        chat_session.org_id,
+        user.id,
+        session,
+        "update chat title",
+        [MemberRole.OWNER, MemberRole.ADMIN],
+    )
+
+    chat_session.title = payload.title
+    await session.commit()
+    await session.refresh(chat_session)
+
+    return {"message": "Chat title updated successfully.", "title": chat_session.title}
 
 
 @router.delete("/{session_id}")
