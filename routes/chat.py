@@ -10,7 +10,12 @@ from main import get_session
 from clients.supabase_client import get_current_user
 from utils.permission import verify_permission
 from models.model import ChatSession, ChatMessage, MemberRole, MessageRole
-from schemas.chat import CreateChatRequest, AddMessageRequest, UpdateChatTitleRequest
+from schemas.chat import (
+    CreateChatRequest,
+    AddMessageRequest,
+    UpdateChatTitleRequest,
+    ApproveToolRequest,
+)
 from services.generate_title import generate_title
 from services.agent import supervisor, AgentState
 
@@ -97,6 +102,8 @@ async def create_chat(
         "role": ai_message.role,
         "content": ai_message.content,
         "tokens": ai_message.tokens,
+        "pending_approval": result.get("pending_approval", False),
+        "reason": result.get("reason"),
         "created_at": ai_message.created_at,
     }
 
@@ -196,6 +203,87 @@ async def send_message(
         "role": ai_message.role,
         "content": ai_message.content,
         "tokens": ai_message.tokens,
+        "pending_approval": result.get("pending_approval", False),
+        "reason": result.get("reason"),
+        "created_at": ai_message.created_at,
+    }
+
+
+@router.post("/{session_id}/approval")
+async def approve_tool_execution(
+    session_id: UUID,
+    payload: ApproveToolRequest,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    chat_session_query = select(ChatSession).where(ChatSession.id == session_id)
+    result = await session.execute(chat_session_query)
+    chat_session = result.scalar_one_or_none()
+
+    if not chat_session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Chat session not found."
+        )
+
+    await verify_permission(
+        chat_session.org_id,
+        user.id,
+        session,
+        "approve tool execution",
+        [MemberRole.OWNER, MemberRole.ADMIN],
+    )
+
+    config = {
+        "configurable": {
+            "thread_id": str(chat_session.id),
+        }
+    }
+
+    current_state = await supervisor.graph.aget_state(config)
+    if not (
+        current_state
+        and current_state.next
+        and "approval_node" in current_state.next
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No pending tool approval for this chat session.",
+        )
+
+    prev_tokens = (
+        current_state.values.get("tokens_used", 0)
+        if current_state.values
+        else 0
+    )
+
+    # update the pending approval state in the graph
+    await supervisor.graph.aupdate_state(config, {"approved": payload.approved})
+
+    # resume graph execution from interrupted node (approval_node)
+    result = await supervisor.graph.ainvoke(input=None, config=config)
+
+    current_tokens = result.get("tokens_used", 0)
+    turn_tokens = max(0, current_tokens - prev_tokens)
+
+    ai_message = ChatMessage(
+        session_id=session_id,
+        role=MessageRole.ASSISTANT,
+        content=result["messages"][-1].content,
+        tokens=turn_tokens,
+    )
+
+    session.add(ai_message)
+    await session.commit()
+    await session.refresh(ai_message)
+
+    return {
+        "id": ai_message.id,
+        "session_id": session_id,
+        "role": ai_message.role,
+        "content": ai_message.content,
+        "tokens": ai_message.tokens,
+        "pending_approval": result.get("pending_approval", False),
+        "reason": result.get("reason"),
         "created_at": ai_message.created_at,
     }
 

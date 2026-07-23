@@ -14,3 +14,7 @@ class AddMessageRequest(BaseModel):
 
 class UpdateChatTitleRequest(BaseModel):
     title: str
+
+
+class ApproveToolRequest(BaseModel):
+    approved: bool
