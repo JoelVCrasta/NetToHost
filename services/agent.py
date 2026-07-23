@@ -123,7 +123,9 @@ class Supervisor:
             [system_prompt, user_prompt],
         )
 
-        decision: RouteDecision = result.get("parsed")
+        decision: Optional[RouteDecision] = result.get("parsed")
+        target_node = decision.target if decision else Node.GENERAL
+
         raw_result = result.get("raw")
         tokens = (
             raw_result.usage_metadata.get("total_tokens", 0)
@@ -131,8 +133,8 @@ class Supervisor:
             else 0
         )
 
-        logger.info(f"Router decision: {decision.target}")
-        return {"active_node": decision.target, "tokens_used": tokens}
+        logger.info(f"Router decision: {target_node}")
+        return {"active_node": target_node, "tokens_used": tokens}
 
     async def general_node(self, state: AgentState):
         logger.info("General agent is handling the request...")
@@ -209,8 +211,11 @@ class Supervisor:
             )
         )
         result = await structured_llm.ainvoke([system_prompt, user_prompt])
+        assessment: Optional[SafetyAssessment] = result.get("parsed")
 
-        assessment = result.get("parsed")
+        is_dangerous = assessment.is_dangerous if assessment else False
+        reason = assessment.reason if assessment else None
+
         raw_result = result.get("raw")
         tokens = (
             raw_result.usage_metadata.get("total_tokens", 0)
@@ -218,12 +223,10 @@ class Supervisor:
             else 0
         )
 
-        logger.info(
-            f"Safety assessment: is_dangerous={assessment.is_dangerous}, reason={assessment.reason}"
-        )
+        logger.info(f"Safety assessment: is_dangerous={is_dangerous}, reason={reason}")
         return {
-            "pending_approval": assessment.is_dangerous,
-            "reason": assessment.reason,
+            "pending_approval": is_dangerous,
+            "reason": reason,
             "tokens_used": tokens,
         }
 
