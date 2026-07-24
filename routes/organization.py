@@ -31,6 +31,23 @@ async def get_organizations(
     result = await session.execute(query)
     return result.all()
 
+router.get("/{organization_id}")
+async def get_organization(
+    organization_id: UUID,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    query = select(Organization).where(Organization.id == organization_id)
+    result = await session.execute(query)
+    organization = result.scalar_one_or_none()
+
+    if not organization:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found."
+        )
+
+    return organization
+
 
 @router.post("/")
 async def create_organization(
