@@ -21,8 +21,10 @@ class TokenResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    org_id: UUID
     name: str
     is_active: bool
     created_by: UUID
-    created_at: datetime
     expires_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
