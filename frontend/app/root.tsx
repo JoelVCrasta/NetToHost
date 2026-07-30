@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react"
 import {
   isRouteErrorResponse,
   Links,
@@ -5,10 +6,14 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
-} from "react-router";
+} from "react-router"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { TooltipProvider } from "~/components/ui/tooltip"
+import { getMeApi } from "~/api/auth"
+import { useSessionStore } from "~/hooks/useSessionStore"
 
-import type { Route } from "./+types/root";
-import "./app.css";
+import type { Route } from "./+types/root"
+import "./app.css"
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -19,9 +24,9 @@ export const links: Route.LinksFunction = () => [
   },
   {
     rel: "stylesheet",
-    href: "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",
+    href: "https://fonts.googleapis.com/css2?family=Google+Sans+Text:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&display=swap",
   },
-];
+]
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -38,12 +43,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Scripts />
       </body>
     </html>
-  );
+  )
 }
-
-import { useState } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { TooltipProvider } from "~/components/ui/tooltip";
 
 export default function App() {
   const [queryClient] = useState(
@@ -55,8 +56,29 @@ export default function App() {
             refetchOnWindowFocus: false,
           },
         },
-      })
-  );
+      }),
+  )
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const hash = window.location.hash
+    if (!hash || !hash.includes("access_token=")) return
+
+    const params = new URLSearchParams(hash.replace(/^#/, ""))
+    const accessToken = params.get("access_token")
+
+    if (accessToken) {
+      getMeApi(accessToken)
+        .then((session) => {
+          useSessionStore.getState().setSession(session)
+          window.history.replaceState(null, "", window.location.pathname)
+          window.location.href = "/dashboard"
+        })
+        .catch((err) => {
+          console.error("Failed to restore session from URL hash:", err)
+        })
+    }
+  }, [])
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -64,23 +86,23 @@ export default function App() {
         <Outlet />
       </TooltipProvider>
     </QueryClientProvider>
-  );
+  )
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  let message = "Oops!";
-  let details = "An unexpected error occurred.";
-  let stack: string | undefined;
+  let message = "Oops!"
+  let details = "An unexpected error occurred."
+  let stack: string | undefined
 
   if (isRouteErrorResponse(error)) {
-    message = error.status === 404 ? "404" : "Error";
+    message = error.status === 404 ? "404" : "Error"
     details =
       error.status === 404
         ? "The requested page could not be found."
-        : error.statusText || details;
+        : error.statusText || details
   } else if (import.meta.env.DEV && error && error instanceof Error) {
-    details = error.message;
-    stack = error.stack;
+    details = error.message
+    stack = error.stack
   }
 
   return (
@@ -93,5 +115,5 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
         </pre>
       )}
     </main>
-  );
+  )
 }
