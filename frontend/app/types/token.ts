@@ -8,3 +8,21 @@ export interface AuthTokenResponse {
   created_at: string
   updated_at: string
 }
+
+export interface CreateTokenResponse {
+  name: string
+  token: string
+  message: string
+}
+
+export interface AuthToken {
+  id: string
+  orgId: string
+  name: string
+  token?: string
+  createdBy: string
+  isActive: boolean
+  expiresAt: string | null
+  createdAt: string
+  updatedAt: string
+}
