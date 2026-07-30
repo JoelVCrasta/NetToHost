@@ -64,7 +64,7 @@ import {
   SidebarTrigger,
   SidebarInset,
 } from "~/components/ui/sidebar"
-import DashboardHeader from "~/routes/dashboard/header"
+import DashboardHeader from "~/routes/dashboard/components/Header"
 
 export function meta({}: Route.MetaArgs) {
   return [{ title: "Dashboard - NetToHost" }]
