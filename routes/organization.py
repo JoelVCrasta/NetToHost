@@ -5,6 +5,7 @@ from supabase_auth import User
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 from datetime import datetime, timezone
+from typing import List
 
 from main import get_session
 from clients.supabase_client import get_current_user
@@ -127,6 +128,22 @@ async def delete_organization(
 
     return {"message": "Organization deleted successfully."}
 
+@router.get("/{organization_id}/members")
+async def get_org_members(
+    organization_id: UUID,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    await verify_permission(
+        organization_id, user.id, session, "view members of", [MemberRole.OWNER]
+    )
+
+    query = select(OrgMember).where(OrgMember.org_id == organization_id)
+    result = await session.execute(query)
+    members = result.scalars().all()
+
+    return members
+
 
 @router.post("/{organization_id}/members")
 async def add_org_members(
@@ -139,7 +156,7 @@ async def add_org_members(
         organization_id, user.id, session, "add members to", [MemberRole.OWNER]
     )
 
-    new_members = []
+    new_members: List[OrgMember] = []
     for member in payload.members:
         new_member = OrgMember(
             org_id=organization_id,
@@ -151,8 +168,12 @@ async def add_org_members(
 
     session.add_all(new_members)
     await session.commit()
+    await session.refresh(new_members)
 
-    return {"message": "Members added successfully."}
+    return {
+        "members": new_members,
+        "message": "Members added successfully."
+    }
 
 
 @router.patch("/{organization_id}/members")
