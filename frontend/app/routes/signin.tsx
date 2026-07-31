@@ -6,6 +6,7 @@ import { ArrowRight, Loader2, AlertCircle } from "lucide-react"
 import { signInSchema, type SignInValues } from "~/schemas/auth"
 import { signInApi } from "~/api/auth"
 import { useSessionStore } from "~/hooks/useSessionStore"
+import { toast } from "~/components/ui/toast"
 import {
   Card,
   CardAction,
@@ -19,6 +20,7 @@ import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { Button } from "~/components/ui/button"
 import AuthLayout from "~/layouts/AuthLayout"
+import { useEffect } from "react"
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -34,8 +36,20 @@ export default function SignIn() {
   const signInMutation = useMutation({
     mutationFn: (values: SignInValues) => signInApi(values),
     onSuccess: (data) => {
+      toast.add({
+        title: "Logged in successfully!",
+        description: `Welcome back, ${data.display_name}!`,
+        type: "success",
+      })
       setSession(data)
       navigate("/dashboard")
+    },
+    onError: (error: Error) => {
+      toast.add({
+        title: "Login failed",
+        description: error.message || "An error occurred during login.",
+        type: "error",
+      })
     },
   })
 
@@ -75,13 +89,6 @@ export default function SignIn() {
           }}
         >
           <CardContent className="space-y-4 pb-4">
-            {signInMutation.isError && (
-              <div className="p-3 rounded-lg border border-rose-500/30 bg-rose-950/30 text-rose-300 text-xs flex items-center space-x-2">
-                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-                <span>{signInMutation.error.message}</span>
-              </div>
-            )}
-
             {/* Email Field */}
             <form.Field
               name="email"

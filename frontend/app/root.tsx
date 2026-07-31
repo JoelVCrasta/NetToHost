@@ -9,6 +9,7 @@ import {
 } from "react-router"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { TooltipProvider } from "~/components/ui/tooltip"
+import { Toaster } from "~/components/ui/toast"
 import { getMeApi } from "~/api/auth"
 import { useSessionStore } from "~/hooks/useSessionStore"
 
@@ -41,6 +42,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {children}
         <ScrollRestoration />
         <Scripts />
+        <Toaster />
       </body>
     </html>
   )
@@ -84,6 +86,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Outlet />
+        <Toaster />
       </TooltipProvider>
     </QueryClientProvider>
   )

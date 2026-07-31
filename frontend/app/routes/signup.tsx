@@ -2,9 +2,10 @@ import type { Route } from "./+types/signup"
 import { Link, useNavigate } from "react-router"
 import { useForm } from "@tanstack/react-form"
 import { useMutation } from "@tanstack/react-query"
-import { ArrowRight, Loader2, AlertCircle, CheckCircle2 } from "lucide-react"
+import { ArrowRight, Loader2 } from "lucide-react"
 import { signUpSchema, type SignUpValues } from "~/schemas/auth"
 import { signUpApi } from "~/api/auth"
+import { toast } from "~/components/ui/toast"
 import {
   Card,
   CardAction,
@@ -18,6 +19,8 @@ import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { Button } from "~/components/ui/button"
 import AuthLayout from "~/layouts/AuthLayout"
+import { useSessionStore } from "~/hooks/useSessionStore"
+import { useEffect } from "react"
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -31,10 +34,18 @@ export default function SignUp() {
 
   const signUpMutation = useMutation({
     mutationFn: (values: SignUpValues) => signUpApi(values),
-    onSuccess: () => {
-      setTimeout(() => {
-        navigate("/signin")
-      }, 1500)
+    onSuccess: (_, variables) => {
+      navigate("/verify-email", {
+        state: { fromSignUp: true, email: variables.email },
+        replace: true,
+      })
+    },
+    onError: (error: Error) => {
+      toast.add({
+        title: "Sign up failed",
+        description: error.message || "An error occurred during sign up.",
+        type: "error",
+      })
     },
   })
 
@@ -169,7 +180,7 @@ export default function SignUp() {
             </form.Field>
           </CardContent>
 
-          <CardFooter className="">
+          <CardFooter className="pt-2">
             <Button
               type="submit"
               disabled={signUpMutation.isPending}
