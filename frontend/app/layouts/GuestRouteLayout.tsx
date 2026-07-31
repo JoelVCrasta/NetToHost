@@ -1,16 +1,26 @@
 import { useEffect } from "react"
 import { Outlet, useNavigate } from "react-router"
+import { Loader2 } from "lucide-react"
 import { useSessionStore } from "~/hooks/useSessionStore"
+import { Spinner } from "~/components/ui/spinner"
 
 export default function GuestRouteLayout() {
   const navigate = useNavigate()
-  const { accessToken } = useSessionStore()
+  const { accessToken, hasHydrated } = useSessionStore()
 
   useEffect(() => {
-    if (accessToken) {
+    if (hasHydrated && accessToken) {
       navigate("/dashboard", { replace: true })
     }
-  }, [accessToken, navigate])
+  }, [hasHydrated, accessToken, navigate])
+
+  if (!hasHydrated) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Spinner className="size-8 text-muted-foreground" />
+      </div>
+    )
+  }
 
   if (accessToken) {
     return null

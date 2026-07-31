@@ -5,6 +5,8 @@ import type { User, SignInResponse } from "~/types/user"
 interface SessionState {
   user: User | null
   accessToken: string | null
+  hasHydrated: boolean
+  setHasHydrated: (status: boolean) => void
   setSession: (payload: SignInResponse) => void
   setAccessToken: (token: string) => void
   clearSession: () => void
@@ -15,6 +17,10 @@ export const useSessionStore = create<SessionState>()(
     (set) => ({
       user: null,
       accessToken: null,
+      hasHydrated: false,
+      setHasHydrated: (status: boolean) => {
+        set({ hasHydrated: status })
+      },
       setSession: (payload: SignInResponse) => {
         const { user_id, email, display_name, avatar_url, access_token } =
           payload
@@ -37,6 +43,9 @@ export const useSessionStore = create<SessionState>()(
     }),
     {
       name: "session-storage",
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true)
+      },
       partialize: (state) => ({
         user: state.user,
         accessToken: state.accessToken,
